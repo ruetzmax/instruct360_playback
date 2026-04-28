@@ -19,6 +19,8 @@ public class InstructionPlayback : MonoBehaviour
     public VideoClip videoClip;
     public GameObject referenceObject;
     public OVRPassthroughLayer passthroughLayer;
+    public OVRHand rightHand;
+    public OVRHand leftHand;
     [SerializeField] private TextAsset instructionJson;
     [SerializeField] private List<TrackedFrame> frames = new List<TrackedFrame>();
     [SerializeField] private List<ClassMeshMapping> classMeshMappings = new List<ClassMeshMapping>();
@@ -58,14 +60,14 @@ public class InstructionPlayback : MonoBehaviour
 
     private void Update()
     {
-        if (Input.GetKeyDown(KeyCode.V))
+        if (Input.GetKeyDown(KeyCode.V) || rightHand.IsReleased())
         {
             displayVideo = !displayVideo;
         }
 
         ApplyDisplayVideoState();
 
-        if (Input.GetKeyDown(KeyCode.Space))
+        if (Input.GetKeyDown(KeyCode.Space) || leftHand.IsReleased())
         {
             playbackMode = playbackMode == PlaybackMode.Global ? PlaybackMode.Local : PlaybackMode.Global;
             DisplayFrame(frameIndex);
