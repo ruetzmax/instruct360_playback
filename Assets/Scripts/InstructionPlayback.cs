@@ -14,6 +14,9 @@ public class InstructionPlayback : MonoBehaviour
 
     public bool disableRotation;
     [Range(0.1f, 1.0f)] public float translationScale = 1.0f;
+    [Range(-5.0f, 5.0f)] public float translationYOffset = 0.0f;
+    public bool enableVideoStabilization = true;
+    [Range(-60, 60)] public int videoRotationFrameOffset = 0;
     public PlaybackMode playbackMode = PlaybackMode.Global;
     public bool displayVideo = false;
     public VideoClip videoClip;
@@ -35,6 +38,10 @@ public class InstructionPlayback : MonoBehaviour
     private VideoPlayer videoPlayer;
     private bool lastDisplayVideoState;
 
+    //used only when duplicating video frames to introduce shift (for stabilization)
+    private Shader renderTextureShiftShader;
+    private Material renderTextureShiftMaterial;
+
     private void Start()
     {
         mainCamera = Camera.main;
@@ -42,6 +49,14 @@ public class InstructionPlayback : MonoBehaviour
         videoPlayer.clip = videoClip;
         videoPlayer.Prepare();
         videoPlayer.Pause();
+        videoPlayer.sendFrameReadyEvents = true;
+        videoPlayer.frameReady += OnVideoFrameReady;
+
+        renderTextureShiftShader = Shader.Find("Hidden/RenderTextureShiftWrap");
+        renderTextureShiftMaterial = new Material(renderTextureShiftShader)
+        {
+            hideFlags = HideFlags.HideAndDontSave
+        };
 
 
         lastDisplayVideoState = !displayVideo;
@@ -55,7 +70,7 @@ public class InstructionPlayback : MonoBehaviour
         InstantiateCameraPlaceholder();
         InstantiateClassObjects();
 
-        DisplayFrame(frameIndex);
+        DisplayObjectsForFrame(frameIndex);
     }
 
     private void Update()
@@ -64,13 +79,12 @@ public class InstructionPlayback : MonoBehaviour
         {
             displayVideo = !displayVideo;
         }
-
         ApplyDisplayVideoState();
 
         if (Input.GetKeyDown(KeyCode.Space) || leftHand.IsReleased())
         {
             playbackMode = playbackMode == PlaybackMode.Global ? PlaybackMode.Local : PlaybackMode.Global;
-            DisplayFrame(frameIndex);
+            DisplayObjectsForFrame(frameIndex);
         }
 
         if (frames.Count == 0)
@@ -88,7 +102,7 @@ public class InstructionPlayback : MonoBehaviour
 
         frameTimer -= frameDuration;
         frameIndex = (frameIndex + 1) % frames.Count;
-        DisplayFrame(frameIndex);
+        DisplayFrame(frameIndex, updateObjects: !displayVideo);
     }
 
     private void ApplyDisplayVideoState(bool force = false)
@@ -131,6 +145,29 @@ public class InstructionPlayback : MonoBehaviour
         }
     }
 
+    private void ShiftVideoTargetTexture(Quaternion cameraRotation)
+    {
+        if (!enableVideoStabilization)
+        {
+            return;
+        }
+
+        float yaw = cameraRotation.eulerAngles.y;
+        float yawOffset = -yaw / 360.0f;
+
+        float pitch = Mathf.DeltaAngle(0.0f, cameraRotation.eulerAngles.x);
+        float pitchOffset = -pitch / 180.0f;
+
+        Vector2 offset = new Vector2(Mathf.Repeat(yawOffset, 1.0f), Mathf.Repeat(pitchOffset, 1.0f));
+        renderTextureShiftMaterial.SetVector("_Offset", offset);
+
+        RenderTexture target = videoPlayer.targetTexture;
+        RenderTexture temp = RenderTexture.GetTemporary(target.descriptor);
+        Graphics.Blit(target, temp, renderTextureShiftMaterial);
+        Graphics.Blit(temp, target);
+        RenderTexture.ReleaseTemporary(temp);
+    }
+
     private void InstantiateClassObjects()
     {
         objectsByClass.Clear();
@@ -170,27 +207,43 @@ public class InstructionPlayback : MonoBehaviour
         trackedCameraPlaceholder.name = "CameraPlaceholder";
     }
 
-    private void DisplayFrame(int frameIndex)
+    private void DisplayFrame(int frameIndex, bool updateObjects)
     {
-        //update video player frame
-        if (displayVideo) {
-            videoPlayer.frame = frameIndex;
-            videoPlayer.StepForward(); 
+        if (frameIndex < 0 || frameIndex >= frames.Count)
+        {
+            return;
         }
-        
+
+        // update video player frame
+        if (displayVideo)
+        {
+            videoPlayer.frame = frameIndex;
+            videoPlayer.StepForward();
+        }
+
+        if (updateObjects)
+        {
+            DisplayObjectsForFrame(frameIndex);
+        }
+    }
+
+    private void DisplayObjectsForFrame(int frameIndex)
+    {
         if (frameIndex < 0 || frameIndex >= frames.Count)
         {
             return;
         }
 
         TrackedFrame frame = frames[frameIndex];
-        
+
         // update tracked camera placeholder
         trackedCameraPlaceholder.SetActive(false);
         if (trackedCameraPlaceholder != null && playbackMode == PlaybackMode.Global)
         {
             trackedCameraPlaceholder.SetActive(true);
-            trackedCameraPlaceholder.transform.localPosition = frame.cameraTranslation;
+            Vector3 cameraTranslation = frame.cameraTranslation;
+            cameraTranslation.y = -cameraTranslation.y;
+            trackedCameraPlaceholder.transform.localPosition = cameraTranslation;
             trackedCameraPlaceholder.transform.localRotation = frame.cameraRotation;
         }
 
@@ -238,8 +291,19 @@ public class InstructionPlayback : MonoBehaviour
                 }
 
                 ReconstructedMesh meshData = trackedClass.reconstructedMeshes[reconstructedObjIndex];
-                instance.transform.localPosition = meshData.translation * translationScale;
-                instance.transform.localRotation = disableRotation ? Quaternion.identity : meshData.rotation;
+                Vector3 scaledTranslation = meshData.translation * translationScale;
+                Quaternion objectRotation = disableRotation ? Quaternion.identity : meshData.rotation;
+
+                if (playbackMode == PlaybackMode.Local && enableVideoStabilization)
+                {
+                    //adjust translation/rotation based on camera rotation (for stabilization)
+                    scaledTranslation = Quaternion.Inverse(frame.cameraRotation) * scaledTranslation;
+                    objectRotation = frame.cameraRotation * objectRotation;
+                }
+
+                scaledTranslation.y = -scaledTranslation.y + translationYOffset;
+                instance.transform.localPosition = scaledTranslation;
+                instance.transform.localRotation = objectRotation;
                 instance.transform.localScale = meshData.scale;
                 instance.SetActive(true);
                 instance.transform.SetParent(GetParentTransform(), worldPositionStays: false);
@@ -260,6 +324,61 @@ public class InstructionPlayback : MonoBehaviour
         }
 
         return transform;
+    }
+
+    private void OnVideoFrameReady(VideoPlayer source, long frameIdx)
+    {
+        if (displayVideo && enableVideoStabilization)
+        {
+            ShiftVideoTargetTexture(GetRotationForVideoFrame(frameIdx));
+        }
+
+        if (displayVideo)
+        {
+            int normalizedIndex = NormalizeFrameIndex(frameIdx);
+            frameIndex = normalizedIndex;
+            DisplayObjectsForFrame(normalizedIndex);
+        }
+    }
+
+    private int NormalizeFrameIndex(long frameIdx)
+    {
+        int count = frames.Count;
+        if (count <= 0)
+        {
+            return 0;
+        }
+
+        int index = (int)(frameIdx % count);
+        if (index < 0)
+        {
+            index += count;
+        }
+
+        return index;
+    }
+
+    private Quaternion GetRotationForVideoFrame(long frameIdx)
+    {
+        int count = frames.Count;
+        int baseIndex = NormalizeFrameIndex(frameIdx);
+
+        int offsetIndex = baseIndex + videoRotationFrameOffset;
+        offsetIndex %= count;
+        if (offsetIndex < 0)
+        {
+            offsetIndex += count;
+        }
+
+        return frames[offsetIndex].cameraRotation;
+    }
+
+    private void OnDisable()
+    {
+        if (videoPlayer != null)
+        {
+            videoPlayer.frameReady -= OnVideoFrameReady;
+        }
     }
 
     [Serializable]

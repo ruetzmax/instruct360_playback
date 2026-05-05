@@ -5952,6 +5952,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: '::'
   disableRotation: 1
   translationScale: 1
+  translationYOffset: -1
+  enableVideoStabilization: 1
+  videoRotationFrameOffset: -4
   playbackMode: 0
   displayVideo: 0
   videoClip: {fileID: 32900000, guid: 06f33f703539bcd45af616a769e139b0, type: 3}
