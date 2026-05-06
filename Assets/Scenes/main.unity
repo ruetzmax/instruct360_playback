@@ -5973,6 +5973,8 @@ MonoBehaviour:
     - {fileID: 4814140183114437194, guid: bcd7fbfca26d52cf1b03ad267e2da8f2, type: 3}
   cameraPlaceholderPrefab: {fileID: 1399910949318876714, guid: 372338c39fee6d329bfa026bd08c2a17, type: 3}
   frameRate: 12
+  displayObjectTrails: 1
+  trailMaterial: {fileID: 10754, guid: 0000000000000000f000000000000000, type: 0}
 --- !u!328 &1128977848
 VideoPlayer:
   m_ObjectHideFlags: 0

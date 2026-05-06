@@ -29,6 +29,8 @@ public class InstructionPlayback : MonoBehaviour
     [SerializeField] private List<ClassMeshMapping> classMeshMappings = new List<ClassMeshMapping>();
     [SerializeField] private GameObject cameraPlaceholderPrefab;
     [SerializeField] private float frameRate = 12f;
+    public bool displayObjectTrails = true;
+    public Material trailMaterial;
 
     private readonly Dictionary<string, List<GameObject>> objectsByClass = new Dictionary<string, List<GameObject>>();
     private GameObject trackedCameraPlaceholder;
@@ -69,6 +71,7 @@ public class InstructionPlayback : MonoBehaviour
 
         InstantiateCameraPlaceholder();
         InstantiateClassObjects();
+        SetupObjectTrails();
 
         DisplayObjectsForFrame(frameIndex);
     }
@@ -105,6 +108,41 @@ public class InstructionPlayback : MonoBehaviour
         DisplayFrame(frameIndex, updateObjects: !displayVideo);
     }
 
+    private void SetupObjectTrails()
+    {
+        foreach (KeyValuePair<string, List<GameObject>> entry in objectsByClass)
+        {
+            foreach (GameObject obj in entry.Value)
+            {
+                TrailRenderer tr = obj.AddComponent<TrailRenderer>();
+                tr.startWidth = 0.03f;
+                tr.endWidth = 0.01f;
+                tr.startColor = new Color(0, 189f/255f, 1);
+                tr.endColor = new Color(0, 26f/255f, 1);
+                tr.material = trailMaterial;
+                tr.time = 3f;
+                tr.enabled = displayObjectTrails;
+            }
+        }
+    }
+
+    private void UpdateObjectTrails(bool reset = false)
+    {
+        foreach (KeyValuePair<string, List<GameObject>> entry in objectsByClass)
+        {
+            foreach (GameObject obj in entry.Value)
+            {
+                TrailRenderer tr = obj.GetComponent<TrailRenderer>();
+                if (frameIndex < 3)
+                {
+                    tr.Clear();
+                }
+                tr.AddPosition(obj.transform.position);
+                tr.enabled = displayObjectTrails;
+            }
+        } 
+    }
+
     private void ApplyDisplayVideoState(bool force = false)
     {
         if (!force && displayVideo == lastDisplayVideoState)
@@ -113,15 +151,6 @@ public class InstructionPlayback : MonoBehaviour
         }
 
         lastDisplayVideoState = displayVideo;
-
-        if (mainCamera == null)
-        {
-            mainCamera = Camera.main;
-            if (mainCamera == null)
-            {
-                return;
-            }
-        }
 
         if (displayVideo)
         {
@@ -214,6 +243,7 @@ public class InstructionPlayback : MonoBehaviour
             return;
         }
 
+
         // update video player frame
         if (displayVideo)
         {
@@ -224,6 +254,7 @@ public class InstructionPlayback : MonoBehaviour
         if (updateObjects)
         {
             DisplayObjectsForFrame(frameIndex);
+            UpdateObjectTrails();
         }
     }
 
