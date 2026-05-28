@@ -23,7 +23,9 @@ public class ReconstructedMesh
 {
     public Vector3 scale;
     public Quaternion rotation;
+    public Quaternion rotationKalman;
     public Vector3 translation;
+    public Vector3 translationKalman;
     public Quaternion chunkRelativeRotation;
     public Vector3 chunkRelativeTranslation;
 }
@@ -97,7 +99,9 @@ public static class JSONInstructionParser
         {
             scale = ToVector3(dto.Scale),
             rotation = ToQuaternion(dto.Rotation),
+            rotationKalman = ToQuaternion(dto.RotationKalman ?? dto.Rotation),
             translation = ToVector3(dto.Translation),
+            translationKalman = ToVector3(dto.TranslationKalman ?? dto.Translation),
             chunkRelativeRotation = ToQuaternion(dto.ChunkRelativeRotation),
             chunkRelativeTranslation = ToVector3(dto.ChunkRelativeTranslation)
         };
@@ -155,8 +159,14 @@ public static class JSONInstructionParser
         [JsonProperty("rotation")]
         public float[] Rotation { get; set; }
 
+        [JsonProperty("rotation_kalman")]
+        public float[] RotationKalman { get; set; }
+
         [JsonProperty("translation")]
         public float[] Translation { get; set; }
+
+        [JsonProperty("translation_kalman")]
+        public float[] TranslationKalman { get; set; }
 
         [JsonProperty("chunk_relative_rotation")]
         public float[] ChunkRelativeRotation { get; set; }

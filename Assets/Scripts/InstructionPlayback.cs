@@ -18,6 +18,7 @@ public class InstructionPlayback : MonoBehaviour
     public bool enableVideoStabilization = true;
     [Range(-60, 60)] public int videoRotationFrameOffset = 0;
     public PlaybackMode playbackMode = PlaybackMode.Global;
+    public bool useKalmanPose;
     public bool displayVideo = false;
     public VideoClip videoClip;
     public GameObject referenceObject;
@@ -120,7 +121,7 @@ public class InstructionPlayback : MonoBehaviour
                 tr.startColor = new Color(0, 189f/255f, 1);
                 tr.endColor = new Color(0, 26f/255f, 1);
                 tr.material = trailMaterial;
-                tr.time = 3f;
+                tr.time = 2f;
                 tr.enabled = displayObjectTrails;
             }
         }
@@ -322,8 +323,10 @@ public class InstructionPlayback : MonoBehaviour
                 }
 
                 ReconstructedMesh meshData = trackedClass.reconstructedMeshes[reconstructedObjIndex];
-                Vector3 scaledTranslation = meshData.translation * translationScale;
-                Quaternion objectRotation = disableRotation ? Quaternion.identity : meshData.rotation;
+                Vector3 meshTranslation = useKalmanPose ? meshData.translationKalman : meshData.translation;
+                Quaternion meshRotation = useKalmanPose ? meshData.rotationKalman : meshData.rotation;
+                Vector3 scaledTranslation = meshTranslation * translationScale;
+                Quaternion objectRotation = disableRotation ? Quaternion.identity : meshRotation;
 
                 if (playbackMode == PlaybackMode.Local && enableVideoStabilization)
                 {

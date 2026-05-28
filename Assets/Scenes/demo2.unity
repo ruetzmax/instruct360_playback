@@ -5951,26 +5951,27 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: '::'
   disableRotation: 1
-  translationScale: 1
-  translationYOffset: -1
-  enableVideoStabilization: 1
+  translationScale: 0.5
+  translationYOffset: 0
+  enableVideoStabilization: 0
   videoRotationFrameOffset: -4
   playbackMode: 0
+  useKalmanPose: 1
   displayVideo: 0
-  videoClip: {fileID: 32900000, guid: 06f33f703539bcd45af616a769e139b0, type: 3}
+  videoClip: {fileID: 32900000, guid: b0f5ece575555f7459e92be21b98d9c5, type: 3}
   referenceObject: {fileID: 2038986855}
   passthroughLayer: {fileID: 986044173}
   rightHand: {fileID: 1559699939}
   leftHand: {fileID: 1355115283}
-  instructionJson: {fileID: 4900000, guid: 012362203f3ca14bfae170f167b64d29, type: 3}
+  instructionJson: {fileID: 4900000, guid: 7170d92a2ca4b67449118e6229723a75, type: 3}
   frames: []
   classMeshMappings:
-  - className: book
+  - className: carboard box
     meshPrefabs:
-    - {fileID: 4814140183114437194, guid: 8b1984a2635ec66e686ecffc3506127d, type: 3}
-  - className: kettle
+    - {fileID: 4699130465464975790, guid: 1ffa670343ebda047925618f204e2356, type: 3}
+  - className: handheld white object
     meshPrefabs:
-    - {fileID: 4814140183114437194, guid: bcd7fbfca26d52cf1b03ad267e2da8f2, type: 3}
+    - {fileID: 178479496026964209, guid: ab0c18e6e09a7584394d715c5aad715f, type: 3}
   cameraPlaceholderPrefab: {fileID: 1399910949318876714, guid: 372338c39fee6d329bfa026bd08c2a17, type: 3}
   frameRate: 12
   displayObjectTrails: 1
@@ -7326,7 +7327,7 @@ MonoBehaviour:
   _monoscopic: 0
   _sharpenType: 0
   _disableRecording: 0
-  _enableDynamicResolution: 0
+  _enableDynamicResolution: 1
   minDynamicResolutionScale: 1
   maxDynamicResolutionScale: 1
   quest2MinDynamicResolutionScale: 0.7
